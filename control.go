@@ -1,15 +1,16 @@
 package main
 
-type service struct {
-	container_name string
-	image string
-	daemon_port string
-	status string
+type Service struct {
+	Container_name string
+	Image string
+	Daemon_port string
+	Status string
 }
 
-var services = make(map[string]service)
+var services = make(map[string]Service)
 
-func container_subscribe(container_name string,image string, daemon_port string){
-	new_service := service{container_name, image, daemon_port, "new"}
+func container_subscribe(container_name string,image string, daemon_port string) Service{
+	new_service := Service{container_name, image, daemon_port, "new"}
 	services[container_name] = new_service
+	return new_service
 }
