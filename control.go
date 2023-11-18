@@ -1,16 +1,29 @@
 package main
 
+import "fmt"
+
 type Service struct {
-	Container_name string
-	Image string
-	Daemon_port string
-	Status string
+	ContainerName string
+	Image         string
+	DaemonPort    string
+	Status        string
 }
 
 var services = make(map[string]Service)
 
-func container_subscribe(container_name string,image string, daemon_port string) Service{
-	new_service := Service{container_name, image, daemon_port, "new"}
-	services[container_name] = new_service
-	return new_service
+func containerSubscribe(containerName string, image string, daemonPort string) Service {
+	newService := Service{containerName, image, daemonPort, "new"}
+	services[containerName] = newService
+	return newService
+}
+
+func containerUnsubscribe(containerName string, image string) int {
+	if _, ok := services[containerName]; ok {
+		delete(services, containerName)
+	} else {
+		fmt.Printf("No container name %s.\n", containerName)
+		return 1
+	}
+
+	return 0
 }

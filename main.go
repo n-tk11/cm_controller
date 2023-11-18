@@ -9,10 +9,10 @@ import (
 func main() {
 	r := gin.Default()
 	// define the routes
-	r.POST("/cm_run", run_handler)
-	r.POST("/cm_checkpoint", checkpoint_handler)
-	r.POST("/cm_subscribe", subscribe_handler)
-	r.POST("/cm_start", start_handler)
+	r.POST("/cm_run", runHandler)
+	r.POST("/cm_checkpoint", checkpointHandler)
+	r.POST("/cm_subscribe", subscribeHandler)
+	r.POST("/cm_start", startHandler)
 	err := r.Run(":8787")
 	if err != nil {
 		fmt.Printf("impossible to start server: %s\n", err)

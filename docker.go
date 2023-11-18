@@ -10,17 +10,15 @@ import (
 	"github.com/docker/docker/api/types/mount"
 )
 
-var last_daemon_port int = 7877
+var lastDaemonPort int = 7877
 
-func run_container(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount) error {
+func runContainer(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
 
-	host_daemon_port := last_daemon_port + 1
-	for isPortInUse(strconv.Itoa(host_daemon_port)) {
-		host_daemon_port += 1
+	hostDaemonPort := lastDaemonPort + 1
+	for isPortInUse(strconv.Itoa(hostDaemonPort)) {
+		hostDaemonPort += 1
 		//fmt.Println(host_daemon_port)
 	}
-	// Define variables to hold the command options based on your logic
-	capabilities := []string{"cap_sys_ptrace", "cap_checkpoint_restore"}
 
 	// Create a slice to hold the Docker command and its arguments
 	cmdArgs := []string{
@@ -28,9 +26,11 @@ func run_container(containerName string, imageName string, portMapping string, i
 		"--name", containerName,
 		"-p", portMapping,
 	}
-	daemon_portMapping := strconv.Itoa(host_daemon_port) + ":7878"
-	cmdArgs = append(cmdArgs, "-p", daemon_portMapping)
+	daemonPortMapping := strconv.Itoa(hostDaemonPort) + ":7878"
+	cmdArgs = append(cmdArgs, "-p", daemonPortMapping)
 	// Add capabilities to the command arguments
+	capabilities := append([]string{"cap_sys_ptrace", "cap_checkpoint_restore"}, caps...)
+
 	for _, cap := range capabilities {
 		cmdArgs = append(cmdArgs, "--cap-add", cap)
 	}
@@ -69,7 +69,7 @@ func run_container(containerName string, imageName string, portMapping string, i
 		return err
 	}
 	fmt.Println("Container started")
-	service := container_subscribe(containerName, imageName, strconv.Itoa(host_daemon_port))
+	service := containerSubscribe(containerName, imageName, strconv.Itoa(hostDaemonPort))
 	service.Status = "Running"
 
 	return nil
