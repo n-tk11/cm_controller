@@ -22,63 +22,77 @@ type StartBody struct {
 func runHandler(c *gin.Context) {
 	requestBody, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
 	containerName := c.Query("container_name")
 	ffRet, ffMsg := callFastFreeze(0, requestBody, containerName)
 	if ffRet == 1 {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"message": ffMsg})
+		updateServiceStatus(containerName, "running")
+		c.IndentedJSON(http.StatusOK, gin.H{"message": ffMsg})
 	}
 }
 
 func checkpointHandler(c *gin.Context) {
 	requestBody, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
 	containerName := c.Query("container_name")
 	ffRet, ffMsg := callFastFreeze(1, requestBody, containerName)
 	if ffRet == 1 {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"message": ffMsg})
+		updateServiceStatus(containerName, "checkpointed")
+		c.IndentedJSON(http.StatusOK, gin.H{"message": ffMsg})
 	}
 }
 
 func subscribeHandler(c *gin.Context) {
 	containerName := c.Query("container_name")
+	containerId := c.Query("container_id")
 	image := c.Query("image")
 	daemonPort := c.Query("daemon_port")
 
 	_, ok := services[containerName]
 	if ok {
 		msg := "Container with the name " + containerName + " already existed!"
-		c.JSON(http.StatusBadRequest, gin.H{"message": msg})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": msg})
 		return
 	}
-	containerSubscribe(containerName, image, daemonPort)
+	serviceSubscribe(containerName, containerId, image, daemonPort)
 	msg := "Container with the name " + containerName + " subscribed"
-	c.JSON(http.StatusOK, gin.H{"message": msg})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
 }
 
 func startHandler(c *gin.Context) {
 	var newStart StartBody
 	if err := c.BindJSON(&newStart); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
 
 	if err := runContainer(newStart.ContainerName, newStart.Image, newStart.AppPort, newStart.Envs, newStart.Mounts, newStart.Caps); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to run the container"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to run the container"})
 		return
 	}
 	msg := "Container with the name " + newStart.ContainerName + " run successfully"
-	c.JSON(http.StatusOK, gin.H{"message": msg})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
 
+}
+
+func getSeviceByNameHandler(c *gin.Context) {
+	containerName := c.Param("name")
+	containerInfo, err := getContainerInfo(services[containerName].ContainerId)
+	if err != nil {
+		fmt.Printf("Err: %s\n", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Client cannot get container info!"})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, containerInfo)
 }
 
 func callFastFreeze(mode int, requestBody []byte, containerName string) (int, string) {
@@ -112,6 +126,11 @@ func callFastFreeze(mode int, requestBody []byte, containerName string) (int, st
 	}
 	fmt.Println("Request sent to ff_daemon")
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 1, fmt.Sprintf("Req to ffdaemon error with response code: %d", resp.StatusCode)
+	}
+
 	// Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

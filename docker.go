@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/client"
 )
 
 var lastDaemonPort int = 7877
@@ -58,8 +63,9 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	// Create the command using the constructed arguments
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 
+	var stdoutBuf bytes.Buffer
 	// Set the output and error pipes to capture the command's output
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = os.Stderr
 
 	// Run the Docker CLI command
@@ -68,8 +74,10 @@ func runContainer(containerName string, imageName string, portMapping string, in
 		fmt.Printf("Error running Docker command: %v\n", err)
 		return err
 	}
+	containerId := strings.TrimSuffix(stdoutBuf.String(), "\n")
+	fmt.Printf("ContaierID: %s\n", containerId)
 	fmt.Println("Container started")
-	service := containerSubscribe(containerName, imageName, strconv.Itoa(hostDaemonPort))
+	service := serviceSubscribe(containerName, containerId, imageName, strconv.Itoa(hostDaemonPort))
 	service.Status = "Running"
 
 	return nil
@@ -85,4 +93,54 @@ func isPortInUse(port string) bool {
 
 	// Port is available
 	return false
+}
+
+// TODO: Test status update feature
+// TODO: Test new added atribute containerId(effect subscribe_handler/runContainer)
+
+func getAllContainerInfo() {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+	defer cli.Close()
+
+	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, container := range containers {
+		fmt.Printf("Container ID: %s\n", container.ID)
+		fmt.Printf("Container Name: %s\n", container.Names[0])
+		fmt.Printf("Container Status: %s\n", container.Status)
+	}
+}
+
+func getContainerInfo(containerId string) (types.ContainerJSON, error) {
+
+	// Create a Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		fmt.Println("Create Docker Client Error")
+		return types.ContainerJSON{}, err
+	}
+
+	ctx := context.Background()
+
+	fmt.Printf("Will call Inspect for %s\n", containerId)
+	// Inspect the container to get detailed information
+	containerInfo, err := cli.ContainerInspect(ctx, containerId)
+	if err != nil {
+		fmt.Printf("Call ContainerInspect for %s error\n", containerId)
+		return types.ContainerJSON{}, err
+	}
+
+	// Print container information
+	fmt.Printf("Container ID: %s\n", containerInfo.ID)
+	fmt.Printf("Container Name: %s\n", containerInfo.Name)
+	fmt.Printf("Container Status: %s\n", containerInfo.State.Status)
+
+	return containerInfo, nil
 }

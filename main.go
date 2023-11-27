@@ -13,6 +13,7 @@ func main() {
 	r.POST("/cm_checkpoint", checkpointHandler)
 	r.POST("/cm_subscribe", subscribeHandler)
 	r.POST("/cm_start", startHandler)
+	r.GET("/cm_service/name/:name", getSeviceByNameHandler)
 	err := r.Run(":8787")
 	if err != nil {
 		fmt.Printf("impossible to start server: %s\n", err)
