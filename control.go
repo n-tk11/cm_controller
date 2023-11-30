@@ -19,6 +19,7 @@ type Service struct {
 var services = make(map[string]Service)
 var mu sync.Mutex
 
+// TODO Should handle already existed case
 func serviceSubscribe(containerName string, containerId string, image string, daemonPort string) Service {
 	newService := Service{containerName, containerId, image, daemonPort, "new"}
 	services[containerName] = newService

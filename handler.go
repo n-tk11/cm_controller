@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/docker/docker/api/types/mount"
@@ -20,7 +20,7 @@ type StartBody struct {
 }
 
 func runHandler(c *gin.Context) {
-	requestBody, err := ioutil.ReadAll(c.Request.Body)
+	requestBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
@@ -36,7 +36,7 @@ func runHandler(c *gin.Context) {
 }
 
 func checkpointHandler(c *gin.Context) {
-	requestBody, err := ioutil.ReadAll(c.Request.Body)
+	requestBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
@@ -138,20 +138,21 @@ func callFastFreeze(mode int, requestBody []byte, containerName string) (int, st
 	if err != nil {
 		return 1, "Error creating the request"
 	}
-
+	req.Close = true
 	req.Header.Set("Content-Type", "application/json")
 	fmt.Println("Going to send the request")
 	// Send the HTTP request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Printf("Error sending the request: %s\n", err)
 		return 1, "Error sending the request"
 	}
 	fmt.Println("Request sent to ff_daemon")
 	defer resp.Body.Close()
 
 	// Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 1, "Error reading the response"
 	}
