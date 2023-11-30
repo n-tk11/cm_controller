@@ -25,7 +25,7 @@ func runHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
-	containerName := c.Query("container_name")
+	containerName := c.Param("name")
 	ffRet, ffMsg := callFastFreeze(0, requestBody, containerName)
 	if ffRet == 1 {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
@@ -41,7 +41,7 @@ func checkpointHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
-	containerName := c.Query("container_name")
+	containerName := c.Param("name")
 	ffRet, ffMsg := callFastFreeze(1, requestBody, containerName)
 	if ffRet == 1 {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
@@ -74,7 +74,7 @@ func startHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
-
+	createServiceDir(newStart.ContainerName)
 	if err := runContainer(newStart.ContainerName, newStart.Image, newStart.AppPort, newStart.Envs, newStart.Mounts, newStart.Caps); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to run the container"})
 		return
@@ -84,7 +84,7 @@ func startHandler(c *gin.Context) {
 
 }
 
-func getSeviceByNameHandler(c *gin.Context) {
+func getContainerInfoHandler(c *gin.Context) {
 	containerName := c.Param("name")
 	containerInfo, err := getContainerInfo(services[containerName].ContainerId)
 	if err != nil {
@@ -93,6 +93,29 @@ func getSeviceByNameHandler(c *gin.Context) {
 		return
 	}
 	c.IndentedJSON(http.StatusOK, containerInfo)
+}
+
+func getServiceInfoHandler(c *gin.Context) {
+	containerName := c.Param("name")
+	if _, ok := services[containerName]; ok {
+		services[containerName].getUpdateServiceStatus()
+		c.IndentedJSON(http.StatusOK, services[containerName])
+	} else {
+		msg := "no service name " + containerName + " found!"
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": msg})
+	}
+
+}
+
+func getAllServicesInfoHandler(c *gin.Context) {
+	allServices := make([]Service, len(services))
+	i := 0
+	for _, service := range services {
+		service.getUpdateServiceStatus()
+		allServices[i] = service
+		i++
+	}
+	c.IndentedJSON(http.StatusOK, allServices)
 }
 
 func callFastFreeze(mode int, requestBody []byte, containerName string) (int, string) {
@@ -127,14 +150,14 @@ func callFastFreeze(mode int, requestBody []byte, containerName string) (int, st
 	fmt.Println("Request sent to ff_daemon")
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return 1, fmt.Sprintf("Req to ffdaemon error with response code: %d", resp.StatusCode)
-	}
-
 	// Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return 1, "Error reading the response"
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return 1, string(body)
 	}
 
 	return 0, string(body)

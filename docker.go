@@ -78,8 +78,7 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	fmt.Printf("ContaierID: %s\n", containerId)
 	fmt.Println("Container started")
 	service := serviceSubscribe(containerName, containerId, imageName, strconv.Itoa(hostDaemonPort))
-	service.Status = "Running"
-
+	service.getUpdateServiceStatus()
 	return nil
 }
 
@@ -96,7 +95,6 @@ func isPortInUse(port string) bool {
 }
 
 // TODO: Test status update feature
-// TODO: Test new added atribute containerId(effect subscribe_handler/runContainer)
 
 func getAllContainerInfo() {
 	ctx := context.Background()
@@ -129,7 +127,7 @@ func getContainerInfo(containerId string) (types.ContainerJSON, error) {
 
 	ctx := context.Background()
 
-	fmt.Printf("Will call Inspect for %s\n", containerId)
+	//fmt.Printf("Will call Inspect for %s\n", containerId)
 	// Inspect the container to get detailed information
 	containerInfo, err := cli.ContainerInspect(ctx, containerId)
 	if err != nil {
