@@ -84,6 +84,28 @@ func startHandler(c *gin.Context) {
 
 }
 
+func stopHandler(c *gin.Context) {
+	containerName := c.Param("name")
+	if err := stopContainer(containerName); err != nil {
+		fmt.Printf("Stop container error: %v", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop the container"})
+		return
+	}
+	msg := "Container with the name " + containerName + " stopped successfully"
+	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
+}
+
+func removeHandler(c *gin.Context) {
+	containerName := c.Param("name")
+	if err := removeContainer(containerName); err != nil {
+		fmt.Printf("Delete container error: %v", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete the container"})
+		return
+	}
+	msg := "Container with the name " + containerName + " deleted successfully"
+	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
+}
+
 func getContainerInfoHandler(c *gin.Context) {
 	containerName := c.Param("name")
 	containerInfo, err := getContainerInfo(services[containerName].ContainerId)

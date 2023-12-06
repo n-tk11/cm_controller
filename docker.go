@@ -11,11 +11,39 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 )
 
 var lastDaemonPort int = 7877
+
+func startService(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
+	if !isSubscribed(containerName) {
+		err := runContainer(containerName, imageName, portMapping, inputEnv, mounts, caps)
+		if err != nil {
+			fmt.Printf("Error running container: %v\n", err)
+			return err
+		}
+	} else {
+		status, err := getContainerStatus(containerName)
+		if err != nil {
+			fmt.Printf("Error getting container status: %v\n", err)
+			return err
+		}
+		if status == "exited" {
+			err := startContainer(containerName)
+			if err != nil {
+				fmt.Printf("Error starting container: %v\n", err)
+				return err
+			}
+		} else {
+			fmt.Printf("Container already running in %v status", status)
+			return err
+		}
+	}
+	return nil
+}
 
 func runContainer(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
 
@@ -82,6 +110,25 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	return nil
 }
 
+// use docker client to start a container with container name
+func startContainer(containerName string) error {
+	// Create a Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		fmt.Println("Create Docker Client Error")
+		return err
+	}
+
+	ctx := context.Background()
+
+	// Start the container
+	if err := cli.ContainerStart(ctx, containerName, types.ContainerStartOptions{}); err != nil {
+		fmt.Printf("Start container %s error\n", containerName)
+		return err
+	}
+	return nil
+}
+
 func isPortInUse(port string) bool {
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
@@ -141,4 +188,47 @@ func getContainerInfo(containerId string) (types.ContainerJSON, error) {
 	fmt.Printf("Container Status: %s\n", containerInfo.State.Status)
 
 	return containerInfo, nil
+}
+
+// TODO TEST THIS
+func stopContainer(containerName string) error {
+	// Create a Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		fmt.Println("Create Docker Client Error")
+		return err
+	}
+
+	ctx := context.Background()
+
+	stopOptions := container.StopOptions{
+		Timeout: nil,
+	}
+	// Stop the container
+	if err := cli.ContainerStop(ctx, containerName, stopOptions); err != nil {
+		fmt.Printf("Stop container %s error\n", containerName)
+		return err
+	}
+
+	return nil
+}
+
+// TODO:TEST THIS
+func removeContainer(containerName string) error {
+	// Create a Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		fmt.Println("Create Docker Client Error")
+		return err
+	}
+
+	ctx := context.Background()
+
+	// Delete the container
+	if err := cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{}); err != nil {
+		fmt.Printf("Delete container %s error\n", containerName)
+		return err
+	}
+	serviceUnsubscribe(containerName)
+	return nil
 }

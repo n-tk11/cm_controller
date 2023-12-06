@@ -28,7 +28,7 @@ func serviceSubscribe(containerName string, containerId string, image string, da
 	return newService
 }
 
-func serviceUnsubscribe(containerName string, image string) int {
+func serviceUnsubscribe(containerName string) int {
 	if _, ok := services[containerName]; ok {
 		delete(services, containerName)
 	} else {
@@ -152,4 +152,11 @@ func createServiceDir(containerName string) {
 		defer file.Close()
 		syscall.Umask(originalUmask)
 	}
+}
+
+func isSubscribed(name string) bool {
+	if _, ok := services[name]; ok {
+		return true
+	}
+	return false
 }

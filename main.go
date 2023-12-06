@@ -14,6 +14,8 @@ func main() {
 	r.POST("/cm_checkpoint/:name", checkpointHandler)
 	r.POST("/cm_subscribe", subscribeHandler)
 	r.POST("/cm_start", startHandler)
+	r.POST("/cm_stop/:name", stopHandler)
+	r.DELETE("/cm_remove/:name", removeHandler)
 	r.GET("/cm_service/container_info/:name", getContainerInfoHandler)
 	r.GET("/cm_service/:name", getServiceInfoHandler)
 	r.GET("/cm_service", getAllServicesInfoHandler)
