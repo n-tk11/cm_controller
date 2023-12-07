@@ -75,7 +75,7 @@ func startHandler(c *gin.Context) {
 		return
 	}
 	createServiceDir(newStart.ContainerName)
-	if err := runContainer(newStart.ContainerName, newStart.Image, newStart.AppPort, newStart.Envs, newStart.Mounts, newStart.Caps); err != nil {
+	if err := startService(newStart.ContainerName, newStart.Image, newStart.AppPort, newStart.Envs, newStart.Mounts, newStart.Caps); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to run the container"})
 		return
 	}
