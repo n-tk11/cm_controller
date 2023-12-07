@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -78,6 +79,12 @@ func runContainer(containerName string, imageName string, portMapping string, in
 		mountArg := "type=" + string(mount.Type) + ",source=" + mount.Source + ",target=" + mount.Target
 		cmdArgs = append(cmdArgs, "--mount", mountArg)
 	}
+	//mount service dir
+	curr_path, err := os.Getwd()
+	if err != nil {
+		log.Println(err)
+	}
+	cmdArgs = append(cmdArgs, "--mount", "type=bind,source="+curr_path+"/services/"+containerName+",target=/opt/controller")
 
 	//Add env arguments
 	for _, env := range inputEnv {
@@ -97,8 +104,8 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	cmd.Stderr = os.Stderr
 
 	// Run the Docker CLI command
-	err := cmd.Run()
-	if err != nil {
+	err_r := cmd.Run()
+	if err_r != nil {
 		fmt.Printf("Error running Docker command: %v\n", err)
 		return err
 	}
