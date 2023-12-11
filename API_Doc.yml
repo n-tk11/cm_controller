@@ -1,0 +1,284 @@
+openapi: "3.0.0"
+
+info:
+  title: CM_Controller API Specification
+  version: "1.0"
+tags:
+  - name: Operations
+paths:
+  /cm_controller/v1/run/{name}:
+    post:
+      tags:
+        - Operations
+      summary: Run application.
+      description: Run a service(application)
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: run arguments and options
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/run_param"
+        required: true
+      responses:
+        "200":
+          description: Application start succesfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Application restore successfully
+        "400":
+          description: Bad request
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: app_args not complete
+        "500":
+          description: Internal fastfreeze error
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Cannot spawn process with pid
+  /cm_controller/v1/checkpoint/{name}:
+    post:
+      tags:
+        - Operations
+      summary: checkpoint application.
+      description: Checkpoint a running service
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: run arguments and options
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/chk_param"
+        required: true
+      responses:
+        "200":
+          description: Application checkpoint succesfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Application checkpoint successfully
+        "400":
+          description: Bad request
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: args not complete
+        "500":
+          description: Internal fastfreeze error
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: cannot access checkpoint filesystem
+  /cm_controller/v1/subscribe:
+    post:
+      description: "Subscribe a existing service(container)"
+      summary: Subscribe a service(container)
+      tags:
+        - Operations
+      parameters:
+        - name: container_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: container_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: image
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: daemon_port
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad request
+        "409":
+          description: Container already exists
+  /cm_controller/v1/start:
+    post:
+      description: "Start a subscribed service's container(ffdaemon)"
+      summary: Start a service's container(ffdaemon)
+      tags:
+        - Operations
+      requestBody:
+        description: start arguments and options
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/start_body"
+        required: true
+      responses:
+        "200":
+          description: OK
+
+components:
+  schemas:
+    run_param:
+      type: object
+      properties:
+        app_args:
+          type: string
+          example: bash -c 'for i in $(seq 100); do echo $i; sleep 1; done'
+          default: ""
+        image_url:
+          type: string
+          example: file:/tmp/ff
+          default: ""
+        on_app_ready:
+          type: string
+          example: ping 8.8.8.8
+          default: ""
+        passphrase_file:
+          type: string
+          example: /etc/pass
+          default: ""
+        preserved_paths:
+          type: string
+          example: /data
+          default: ""
+        no_restore:
+          type: boolean
+          example: false
+          default: false
+        allow_bad_image:
+          type: boolean
+          example: true
+          default: false
+        leave_stopped:
+          type: boolean
+          example: true
+          default: false
+        verbose:
+          type: integer
+          example: 3
+          default: 0
+        envs:
+          type: array
+          example: ["FF_APP_LD_LIBRARY_PATH=/usr/local/lib", "S3_CMD='aws s3'"]
+          default: []
+    chk_param:
+      type: object
+      properties:
+        leave_running:
+          type: string
+          example: true
+          default: false
+        image_url:
+          type: string
+          example: file:/tmp/ff
+          default: ""
+        passphrase_file:
+          type: string
+          example: /etc/pass
+        preserved_paths:
+          type: string
+          example: /data
+          default: ""
+        num_shards:
+          type: integer
+          example: 2
+          default: 4
+        cpu_budget:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+        verbose:
+          type: integer
+          example: 3
+          default: 0
+        envs:
+          type: array
+          example: ["S3_CMD='aws s3'"]
+          default: []
+    start_body:
+      type: object
+      properties:
+        container_name:
+          type: string
+          example: ff
+          default: ""
+        image:
+          type: string
+          example: ffdev:c4
+          default: ""
+        app_port:
+          type: string
+          example: 80
+          default: 0
+        envs:
+          type: array
+          example: ["S3_CMD='aws s3'"]
+          default: []
+        mounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/mount"
+          example:
+            [
+              {
+                "Type": "bind",
+                "Source": "/data",
+                "Target": "/data",
+                "ReadOnly": false,
+                "Consistency": "default",
+              },
+            ]
+          default: []
+        caps:
+          type: array
+          items:
+            type: string
+          example: ["SYS_ADMIN"]
+          default: []
+    mount:
+      type: object
+      properties:
+        Type:
+          type: string
+          enum: [bind, volume, tmpfs, npipe, cluster]
+          default: volume
+          example: bind
+        Source:
+          type: string
+          example: /data
+          default: ""
+        Target:
+          type: string
+          example: /data
+          default: ""
+        ReadOnly:
+          type: boolean
+          example: false
+          default: false
+        Consistency:
+          type: string
+          enum: [default, consistent, cached, delegated]
+          default: default
