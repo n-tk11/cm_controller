@@ -60,7 +60,7 @@ func subscribeHandler(c *gin.Context) {
 	_, ok := services[containerName]
 	if ok {
 		msg := "Container with the name " + containerName + " already existed!"
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": msg})
+		c.IndentedJSON(http.StatusConflict, gin.H{"message": msg})
 		return
 	}
 	serviceSubscribe(containerName, containerId, image, daemonPort)
