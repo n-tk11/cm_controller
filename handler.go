@@ -68,6 +68,17 @@ func subscribeHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
 }
 
+func unsubscribeHandler(c *gin.Context) {
+	containerName := c.Param("name")
+	if err := serviceUnsubscribe(containerName); err != 0 {
+		msg := "Container with the name " + containerName + " not found!"
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": msg})
+		return
+	}
+	msg := "Container with the name " + containerName + " unsubscribed"
+	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
+}
+
 func startHandler(c *gin.Context) {
 	var newStart StartBody
 	if err := c.BindJSON(&newStart); err != nil {
@@ -102,6 +113,7 @@ func removeHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete the container"})
 		return
 	}
+	serviceUnsubscribe(containerName)
 	msg := "Container with the name " + containerName + " deleted successfully"
 	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
 }

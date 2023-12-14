@@ -122,6 +122,23 @@ paths:
           description: Bad request
         "409":
           description: Container already exists
+  /cm_controller/v1/unsubscribe/{name}:
+    post:
+      description: "Unsubscribe a subscribed service"
+      summary: Unsubscribe a service
+      tags:
+        - Operations
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Not subscribed
   /cm_controller/v1/start:
     post:
       description: "Start a subscribed service's container(ffdaemon)"
@@ -138,7 +155,101 @@ paths:
       responses:
         "200":
           description: OK
-
+  /cm_controller/v1/stop/{name}:
+    post:
+      description: "Stop a subscribed service's container"
+      summary: Stop a service's container
+      tags:
+        - Operations
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad request
+        "500":
+          description: Fail to stop container"
+  /cm_controller/v1/remove/{name}:
+    post:
+      description: "Remove a subscribed service's container(and unsubscribe)"
+      summary: Remove a service's container
+      tags:
+        - Operations
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Fail to delete container
+  /cm_controller/v1/service/container_info/{name}:
+    get:
+      description: "Get a subscribed service's container info"
+      summary: Get a service's container info
+      tags:
+        - Operations
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad request
+        "500":
+          description: Fail to get container info
+  /cm_controller/v1/service/{name}:
+    get:
+      description: "Get a subscribed service's info"
+      summary: Get a service's info
+      tags:
+        - Operations
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceJson"
+        "400":
+          description: Bad request
+        "500":
+          description: Fail to get service info
+  /cm_controller/v1/service:
+    get:
+      description: "Get all subscribed services' info"
+      summary: Get all services' info
+      tags:
+        - Operations
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceJson"
+        "500":
+          description: Fail to get service info
 components:
   schemas:
     run_param:
@@ -282,3 +393,17 @@ components:
           type: string
           enum: [default, consistent, cached, delegated]
           default: default
+    ServiceJson:
+      type: object
+      properties:
+        container_name:
+          type: string
+        container_id:
+          type: string
+        image:
+          type: string
+        daemon_port:
+          type: string
+        status:
+          type: string
+          enum: [running, checkpointed, standby, exited]
