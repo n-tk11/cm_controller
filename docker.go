@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -42,7 +43,7 @@ func startService(containerName string, imageName string, portMapping string, in
 			}
 		} else {
 			logger.Info("Container already running", zap.String("containerName", containerName), zap.String("status", status))
-			return err
+			return errors.New("Container already running")
 		}
 	}
 	logger.Info("Container started")
