@@ -87,7 +87,7 @@ func (s Service) getUpdateServiceStatus() string {
 // Get "container" status (as docker status)
 func getContainerStatus(containerName string) (string, error) {
 	logger.Info("Getting container status", zap.String("containerName", containerName))
-	containerInfo, err := getContainerInfo(services[containerName].ContainerId)
+	containerInfo, err := getContainerInfo(containerName)
 	if err != nil {
 		fmt.Printf("Err: %s\n", err)
 		return "", err

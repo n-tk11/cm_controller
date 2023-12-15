@@ -117,7 +117,7 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	containerId := strings.TrimSuffix(stdoutBuf.String(), "\n")
 	conStat, err := getContainerStatus(containerName)
 	if err != nil || conStat != "running" {
-		logger.Error("Error starting container", zap.String("containerName", containerName))
+		logger.Error("Error starting container", zap.String("containerName", containerName), zap.Error(err))
 		removeContainer(containerName)
 		return err
 	}
