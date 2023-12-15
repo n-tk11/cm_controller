@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"syscall"
+
+	"go.uber.org/zap"
 )
 
 type Service struct {
@@ -19,23 +22,30 @@ type Service struct {
 var services = make(map[string]Service)
 var mu sync.Mutex
 
-// TODO Should handle already existed case
-func serviceSubscribe(containerName string, containerId string, image string, daemonPort string) Service {
+func serviceSubscribe(containerName string, containerId string, image string, daemonPort string) (Service, error) {
+	if _, ok := services[containerName]; ok {
+		logger.Error("Service already subscribed", zap.String("containerName", containerName))
+		return services[containerName], errors.New("Service already subscribed")
+	}
+	err := createServiceDir(containerName)
+	if err != nil {
+		logger.Error("Error creating service dir", zap.String("containerName", containerName), zap.Error(err))
+		return Service{}, err
+	}
 	newService := Service{containerName, containerId, image, daemonPort, "new"}
 	services[containerName] = newService
 
-	createServiceDir(containerName)
-	return newService
+	return newService, nil
 }
 
-func serviceUnsubscribe(containerName string) int {
+func serviceUnsubscribe(containerName string) error {
 	if _, ok := services[containerName]; ok {
 		delete(services, containerName)
 	} else {
-		fmt.Printf("No container name %s.\n", containerName)
-		return 1
+		logger.Error("Service not found", zap.String("containerName", containerName))
+		return fmt.Errorf("No container name %s", containerName)
 	}
-	return 0
+	return nil
 }
 
 // TODO: This function will first check if all subscribed containers is still running(ffdaemon is alive) if not it will update the status to "stopped" / report all subscribed containers (including its status) in json
@@ -43,13 +53,17 @@ func getAllServices() {
 
 }
 
-// TODO: Test
 func (s Service) getUpdateServiceStatus() string {
 	//fmt.Println("Enter getUpdateServiceStatus")
+	logger.Info("Getting service status", zap.String("containerName", s.ContainerName))
 	if contStat, err := getContainerStatus(s.ContainerName); err == nil {
 		//fmt.Println(contStat)
 		if contStat == "running" {
-			stat := readStatusPipe(s.ContainerName)
+			stat, err := readStatusFile(s.ContainerName)
+			if err != nil {
+				logger.Error("Error reading status from status file", zap.String("containerName", s.ContainerName), zap.Error(err))
+				return s.Status
+			}
 			if stat == '0' {
 				//fmt.Println("case 0")
 				updateServiceStatus(s.ContainerName, "standby")
@@ -60,7 +74,7 @@ func (s Service) getUpdateServiceStatus() string {
 				updateServiceStatus(s.ContainerName, "checkpointed")
 			} else {
 				//fmt.Println("case 2")
-				fmt.Println("Error reading status from pipe,status will remain the same")
+				logger.Error("Error reading status from status file", zap.String("containerName", s.ContainerName), zap.Error(err))
 			}
 		} else {
 			//fmt.Println("case 3")
@@ -72,6 +86,7 @@ func (s Service) getUpdateServiceStatus() string {
 
 // Get "container" status (as docker status)
 func getContainerStatus(containerName string) (string, error) {
+	logger.Info("Getting container status", zap.String("containerName", containerName))
 	containerInfo, err := getContainerInfo(services[containerName].ContainerId)
 	if err != nil {
 		fmt.Printf("Err: %s\n", err)
@@ -80,28 +95,29 @@ func getContainerStatus(containerName string) (string, error) {
 	return containerInfo.State.Status, nil
 }
 
-func updateServiceStatus(containerName string, status string) int {
+func updateServiceStatus(containerName string, status string) error {
 	mu.Lock()
 	defer mu.Unlock()
 	if entry, ok := services[containerName]; ok {
 		entry.Status = status
 		services[containerName] = entry
-		return 0
+		return nil
 	} else {
 		fmt.Println("Service not found/subscribed!")
-		return 1
+		return errors.New("Service not found")
 	}
 
 }
 
-func readStatusPipe(containerName string) byte {
-	pipeName := "services/" + containerName + "/pipes/status"
+func readStatusFile(containerName string) (byte, error) {
+	logger.Info("Reading status file", zap.String("containerName", containerName))
+	fileName := "services/" + containerName + "/comms/status"
 
 	// Open the named pipe for reading
-	pipe, err := os.OpenFile(pipeName, os.O_RDONLY, os.ModeNamedPipe)
+	pipe, err := os.OpenFile(fileName, os.O_RDONLY, os.ModeNamedPipe)
 	if err != nil {
-		fmt.Println("Error opening named pipe:", err)
-		return 0
+		fmt.Println("Error opening status file:", err)
+		return 0, err
 	}
 	defer pipe.Close()
 
@@ -110,48 +126,53 @@ func readStatusPipe(containerName string) byte {
 	var b [1]byte
 	n, err := pipe.Read(b[:])
 	if err != nil {
-		fmt.Println("Error reading from named pipe:", err)
-		return 0
+		fmt.Println("Error reading from status file:", err)
+		return 0, err
 	}
 
 	if n > 0 {
-		return b[0]
+		return b[0], nil
 	}
-	return 0
+	return 0, fmt.Errorf("No byte read")
 }
 
 func createRootServiceDir() {
 	if _, err := os.Stat("services/"); os.IsNotExist(err) {
 		if err := os.MkdirAll("services/", os.ModePerm); err != nil {
-			fmt.Printf("Error mkdir root service : %v\n", err)
+			logger.Panic("Error mkdir root service", zap.Error(err))
+			panic(err)
 		}
 	}
 }
 
 // Create per-service dir with pipe dir and files
-func createServiceDir(containerName string) {
+func createServiceDir(containerName string) error {
 	filePath := "services/" + containerName
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		if err := os.Mkdir(filePath, os.ModePerm); err != nil {
-			fmt.Printf("Error mkdir service: %v\n", err)
+			logger.Error("Error mkdir service", zap.String("containerName", containerName), zap.Error(err))
+			return err
 		}
 	}
-	dirPath := "services/" + containerName + "/pipes"
+	dirPath := "services/" + containerName + "/comms"
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
-			fmt.Printf("failed to create pipes dir: %v\n", err)
+			logger.Error("Error mkdir comms", zap.String("containerName", containerName), zap.Error(err))
+			return err
 		}
 	}
-	pipePath := "services/" + containerName + "/pipes" + "/status"
-	if _, err := os.Stat(pipePath); os.IsNotExist(err) {
+	statusPath := "services/" + containerName + "/comms" + "/status"
+	if _, err := os.Stat(statusPath); os.IsNotExist(err) {
 		originalUmask := syscall.Umask(0)
-		file, err := os.Create(pipePath)
+		file, err := os.Create(statusPath)
 		if err != nil {
-			fmt.Printf("failed to create named pipe: %v\n", err)
+			logger.Error("Error creating status file", zap.String("containerName", containerName), zap.Error(err))
+			return err
 		}
 		defer file.Close()
 		syscall.Umask(originalUmask)
 	}
+	return nil
 }
 
 func isSubscribed(name string) bool {

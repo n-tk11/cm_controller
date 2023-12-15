@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
 	createRootServiceDir()
+	logger := getGlobalLogger()
 	r := gin.Default()
 	// define the routes
 	r.POST("/cm_controller/v1/run/:name", runHandler)
@@ -22,7 +22,8 @@ func main() {
 	r.GET("/cm_controller/v1/service", getAllServicesInfoHandler)
 	err := r.Run(":8787")
 	if err != nil {
-		fmt.Printf("impossible to start server: %s\n", err)
+		logger.Error("impossible to start server", zap.Error(err))
 	}
+	logger.Info("server started")
 	//createRootServiceDir()
 }
