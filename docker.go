@@ -22,7 +22,7 @@ import (
 var lastDaemonPort int = 7877
 
 func startService(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
-	logger.Info("Starting service", zap.String("containerName", containerName))
+	logger.Debug("Starting service", zap.String("containerName", containerName))
 	if !isSubscribed(containerName) {
 		err := runContainer(containerName, imageName, portMapping, inputEnv, mounts, caps)
 		if err != nil {
@@ -42,7 +42,7 @@ func startService(containerName string, imageName string, portMapping string, in
 				return err
 			}
 		} else {
-			logger.Info("Container already running", zap.String("containerName", containerName), zap.String("status", status))
+			logger.Error("Container already running", zap.String("containerName", containerName), zap.String("status", status))
 			return errors.New("Container already running")
 		}
 	}
@@ -51,7 +51,7 @@ func startService(containerName string, imageName string, portMapping string, in
 }
 
 func runContainer(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
-	logger.Info("Running container", zap.String("containerName", containerName))
+	logger.Debug("Running container", zap.String("containerName", containerName))
 	hostDaemonPort := lastDaemonPort + 1
 	for isPortInUse(strconv.Itoa(hostDaemonPort)) {
 		hostDaemonPort += 1
@@ -108,11 +108,10 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	cmd.Stderr = os.Stderr
 
 	// Run the Docker CLI command
-	logger.Info("Running Docker run command", zap.String("containerName", containerName), zap.String("command", strings.Join(cmdArgs, " ")))
+	logger.Debug("Running Docker run command", zap.String("containerName", containerName), zap.String("command", strings.Join(cmdArgs, " ")))
 	err_r := cmd.Run()
 	if err_r != nil {
 		logger.Error("Error running Docker command", zap.String("containerName", containerName), zap.Error(err_r))
-		fmt.Printf("Error running Docker command: %v\n", err)
 		return err_r
 	}
 	containerId := strings.TrimSuffix(stdoutBuf.String(), "\n")
@@ -134,7 +133,7 @@ func runContainer(containerName string, imageName string, portMapping string, in
 // use docker client to start a container with container name
 func startContainer(containerName string) error {
 	// Create a Docker client
-	logger.Info("Starting container", zap.String("containerName", containerName))
+	logger.Debug("Starting container", zap.String("containerName", containerName))
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logger.Error("Error creating docker client", zap.String("containerName", containerName), zap.Error(err))
@@ -187,7 +186,7 @@ func getAllContainerInfo() {
 func getContainerInfo(containerId string) (types.ContainerJSON, error) {
 
 	// Create a Docker client
-	logger.Info("Getting container info", zap.String("containerId", containerId))
+	logger.Debug("Getting container info", zap.String("containerId", containerId))
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logger.Error("Error creating docker client", zap.String("containerId", containerId), zap.Error(err))
@@ -205,9 +204,9 @@ func getContainerInfo(containerId string) (types.ContainerJSON, error) {
 	}
 
 	// Print container information
-	logger.Info("Container ID", zap.String("containerId", containerInfo.ID))
-	logger.Info("Container Name", zap.String("containerName", containerInfo.Name))
-	logger.Info("Container Status", zap.String("containerStatus", containerInfo.State.Status))
+	logger.Debug("Container ID", zap.String("containerId", containerInfo.ID))
+	logger.Debug("Container Name", zap.String("containerName", containerInfo.Name))
+	logger.Debug("Container Status", zap.String("containerStatus", containerInfo.State.Status))
 
 	return containerInfo, nil
 }
@@ -215,7 +214,7 @@ func getContainerInfo(containerId string) (types.ContainerJSON, error) {
 // TODO TEST THIS
 func stopContainer(containerName string) error {
 	// Create a Docker client
-	logger.Info("Stopping container", zap.String("containerName", containerName))
+	logger.Debug("Stopping container", zap.String("containerName", containerName))
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logger.Error("Error creating docker client", zap.String("containerName", containerName), zap.Error(err))
@@ -232,14 +231,14 @@ func stopContainer(containerName string) error {
 		logger.Error("Error stopping container", zap.String("containerName", containerName), zap.Error(err))
 		return err
 	}
-
+	logger.Info("Container stopped", zap.String("containerName", containerName))
 	return nil
 }
 
 // TODO:TEST THIS
 func removeContainer(containerName string) error {
 	// Create a Docker client
-	logger.Info("Removing container", zap.String("containerName", containerName))
+	logger.Debug("Removing container", zap.String("containerName", containerName))
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logger.Error("Error creating docker client", zap.String("containerName", containerName), zap.Error(err))
@@ -254,5 +253,6 @@ func removeContainer(containerName string) error {
 		return err
 	}
 	serviceUnsubscribe(containerName)
+	logger.Info("Container removed", zap.String("containerName", containerName))
 	return nil
 }
