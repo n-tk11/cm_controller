@@ -162,7 +162,6 @@ func isPortInUse(port string) bool {
 	return false
 }
 
-// TODO: Test status update feature
 func getAllContainerInfo() {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -211,7 +210,6 @@ func getContainerInfo(containerId string) (types.ContainerJSON, error) {
 	return containerInfo, nil
 }
 
-// TODO TEST THIS
 func stopContainer(containerName string) error {
 	// Create a Docker client
 	logger.Debug("Stopping container", zap.String("containerName", containerName))
@@ -235,7 +233,6 @@ func stopContainer(containerName string) error {
 	return nil
 }
 
-// TODO:TEST THIS
 func removeContainer(containerName string) error {
 	// Create a Docker client
 	logger.Debug("Removing container", zap.String("containerName", containerName))

@@ -55,7 +55,7 @@ func getAllServices() {
 
 func (s Service) getUpdateServiceStatus() string {
 	//fmt.Println("Enter getUpdateServiceStatus")
-	logger.Info("Getting service status", zap.String("containerName", s.ContainerName))
+	logger.Debug("Getting service status", zap.String("containerName", s.ContainerName))
 	if contStat, err := getContainerStatus(s.ContainerName); err == nil {
 		//fmt.Println(contStat)
 		if contStat == "running" {
@@ -86,7 +86,7 @@ func (s Service) getUpdateServiceStatus() string {
 
 // Get "container" status (as docker status)
 func getContainerStatus(containerName string) (string, error) {
-	logger.Info("Getting container status", zap.String("containerName", containerName))
+	logger.Debug("Getting container status", zap.String("containerName", containerName))
 	containerInfo, err := getContainerInfo(containerName)
 	if err != nil {
 		fmt.Printf("Err: %s\n", err)
@@ -110,7 +110,7 @@ func updateServiceStatus(containerName string, status string) error {
 }
 
 func readStatusFile(containerName string) (byte, error) {
-	logger.Info("Reading status file", zap.String("containerName", containerName))
+	logger.Debug("Reading status file", zap.String("containerName", containerName))
 	fileName := "services/" + containerName + "/comms/status"
 
 	// Open the named pipe for reading

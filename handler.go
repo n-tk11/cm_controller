@@ -114,7 +114,6 @@ func removeHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete the container"})
 		return
 	}
-	serviceUnsubscribe(containerName)
 	msg := "Container with the name " + containerName + " deleted successfully"
 	c.IndentedJSON(http.StatusOK, gin.H{"message": msg})
 }
