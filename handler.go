@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types/mount"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type StartBody struct {
@@ -170,28 +171,31 @@ func callFastFreeze(mode int, requestBody []byte, containerName string) (int, st
 	// Create an HTTP Post request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 	if err != nil {
+		logger.Error("Error creating the request", zap.Error(err))
 		return 1, "Error creating the request"
 	}
 	req.Close = true
 	req.Header.Set("Content-Type", "application/json")
-	fmt.Println("Going to send the request")
+	logger.Debug("Going to send the request", zap.String("url", url), zap.ByteString("requestBody", requestBody))
+
 	// Send the HTTP request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Error sending the request: %s\n", err)
+		logger.Error("Error sending the request", zap.Error(err))
 		return 1, "Error sending the request"
 	}
-	fmt.Println("Request sent to ff_daemon")
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error("Error reading the response", zap.Error(err))
 		return 1, "Error reading the response"
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		logger.Error("Error response from ff_daemon", zap.Int("statusCode", resp.StatusCode), zap.String("body", string(body)))
 		return 1, string(body)
 	}
 
