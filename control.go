@@ -73,7 +73,6 @@ func (s Service) getUpdateServiceStatus() string {
 			} else if stat == '2' {
 				updateServiceStatus(s.ContainerName, "checkpointed")
 			} else {
-				//fmt.Println("case 2")
 				logger.Error("Error reading status from status file", zap.String("containerName", s.ContainerName), zap.Error(err))
 			}
 		} else {

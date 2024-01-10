@@ -141,7 +141,7 @@ paths:
           description: Not subscribed
   /cm_controller/v1/start:
     post:
-      description: "Start a subscribed service's container(ffdaemon)"
+      description: "Start a subscribed service's container(ffdaemon) and also subscribed"
       summary: Start a service's container(ffdaemon)
       tags:
         - Operations
