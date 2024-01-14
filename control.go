@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"syscall"
@@ -31,6 +32,11 @@ func serviceSubscribe(containerName string, containerId string, image string, da
 	if err != nil {
 		logger.Error("Error creating service dir", zap.String("containerName", containerName), zap.Error(err))
 		return Service{}, err
+	}
+	err_p := writeServicePort(containerName, daemonPort)
+	if err_p != nil {
+		logger.Error("Error writing service port", zap.String("containerName", containerName), zap.Error(err_p))
+		return Service{}, err_p
 	}
 	newService := Service{containerName, containerId, image, daemonPort, "new"}
 	services[containerName] = newService
@@ -174,9 +180,83 @@ func createServiceDir(containerName string) error {
 	return nil
 }
 
+func writeServicePort(containerName string, port string) error {
+	filePath := "services/" + containerName + "/port"
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		originalUmask := syscall.Umask(0)
+		file, err := os.Create(filePath)
+		if err != nil {
+			logger.Error("Error creating port file", zap.String("containerName", containerName), zap.Error(err))
+			return err
+		}
+		defer file.Close()
+		syscall.Umask(originalUmask)
+	}
+	file, err := os.OpenFile(filePath, os.O_WRONLY, os.ModeNamedPipe)
+	if err != nil {
+		logger.Error("Error opening port file", zap.String("containerName", containerName), zap.Error(err))
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(port)
+	if err != nil {
+		logger.Error("Error writing port file", zap.String("containerName", containerName), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
 func isSubscribed(name string) bool {
 	if _, ok := services[name]; ok {
 		return true
 	}
 	return false
+}
+
+// It will scan the /services directory and check all services stuatus via getUpdateServiceStatus()
+func checkServices() {
+	logger.Debug("Checking services")
+	dirPath := "services/"
+	dirEntries, err := os.ReadDir(dirPath)
+	if err != nil {
+		logger.Error("Error reading services dir", zap.Error(err))
+		return
+	}
+
+	for _, dirEntry := range dirEntries {
+		if dirEntry.IsDir() {
+			conInfo, err := getContainerInfo(dirEntry.Name())
+			if err != nil {
+				logger.Error("Error getting container info", zap.String("containerName", dirEntry.Name()), zap.Error(err))
+				continue
+			}
+			portFilePath := fmt.Sprintf("services/%s/port", dirEntry.Name())
+			port, err := readServicePort(portFilePath)
+			if err != nil {
+				logger.Error("Error reading port file", zap.String("containerName", dirEntry.Name()), zap.Error(err))
+				continue
+			}
+			service := Service{dirEntry.Name(), conInfo.ID, conInfo.Config.Image, port, "new"}
+			services[dirEntry.Name()] = service
+			service.getUpdateServiceStatus()
+			logger.Debug("Added a former service", zap.String("containerName", dirEntry.Name()))
+		}
+	}
+
+}
+
+func readServicePort(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	portBytes, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	return string(portBytes), nil
 }

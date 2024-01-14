@@ -6,8 +6,9 @@ import (
 )
 
 func main() {
-	createRootServiceDir()
 	logger := getGlobalLogger()
+	createRootServiceDir()
+	checkServices()
 	r := gin.Default()
 	// define the routes
 	r.POST("/cm_controller/v1/run/:name", runHandler)
