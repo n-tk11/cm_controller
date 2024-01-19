@@ -20,6 +20,10 @@ type StartBody struct {
 	Caps          []string      `json:"caps"`
 }
 
+func upHandler(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "up"})
+}
+
 func runHandler(c *gin.Context) {
 	requestBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {

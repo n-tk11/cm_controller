@@ -11,6 +11,7 @@ func main() {
 	checkServices()
 	r := gin.Default()
 	// define the routes
+	r.GET("/cm_controller/v1/up", upHandler)
 	r.POST("/cm_controller/v1/run/:name", runHandler)
 	r.POST("/cm_controller/v1/checkpoint/:name", checkpointHandler)
 	r.POST("/cm_controller/v1/subscribe", subscribeHandler)
