@@ -62,7 +62,9 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	cmdArgs := []string{
 		"docker", "run",
 		"--name", containerName,
-		"-p", portMapping,
+	}
+	if portMapping != "" {
+		cmdArgs = append(cmdArgs, "-p", portMapping)
 	}
 	daemonPortMapping := strconv.Itoa(hostDaemonPort) + ":7878"
 	cmdArgs = append(cmdArgs, "-p", daemonPortMapping)
