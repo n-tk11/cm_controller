@@ -251,7 +251,11 @@ func removeContainer(containerName string) error {
 		logger.Error("Error removing container", zap.String("containerName", containerName), zap.Error(err))
 		return err
 	}
-	serviceUnsubscribe(containerName)
+	err = serviceUnsubscribe(containerName)
+	if err != nil {
+		logger.Error("Error unsubscribing service after container remove", zap.String("containerName", containerName), zap.Error(err))
+		return err
+	}
 	logger.Info("Container removed", zap.String("containerName", containerName))
 	return nil
 }
