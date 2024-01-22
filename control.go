@@ -46,7 +46,13 @@ func serviceSubscribe(containerName string, containerId string, image string, da
 
 func serviceUnsubscribe(containerName string) error {
 	if _, ok := services[containerName]; ok {
+		err := deleteServiceDir(containerName)
+		if err != nil {
+			logger.Error("Error deleting service dir", zap.String("containerName", containerName), zap.Error(err))
+			return err
+		}
 		delete(services, containerName)
+		logger.Debug("Service unsubscribed", zap.String("containerName", containerName))
 	} else {
 		logger.Error("Service not found", zap.String("containerName", containerName))
 		return fmt.Errorf("No container name %s", containerName)
@@ -176,6 +182,16 @@ func createServiceDir(containerName string) error {
 		}
 		defer file.Close()
 		syscall.Umask(originalUmask)
+	}
+	return nil
+}
+func deleteServiceDir(containerName string) error {
+	filePath := "services/" + containerName
+	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
+		if err := os.RemoveAll(filePath); err != nil {
+			logger.Error("Error removing service dir", zap.String("containerName", containerName), zap.Error(err))
+			return err
+		}
 	}
 	return nil
 }

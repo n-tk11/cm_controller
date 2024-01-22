@@ -76,8 +76,6 @@ func subscribeHandler(c *gin.Context) {
 func unsubscribeHandler(c *gin.Context) {
 	containerName := c.Param("name")
 	if err := serviceUnsubscribe(containerName); err != nil {
-		//add err to msg
-
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Error:" + err.Error()})
 		return
 	}
