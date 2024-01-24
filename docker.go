@@ -119,9 +119,12 @@ func runContainer(containerName string, imageName string, portMapping string, in
 	containerId := strings.TrimSuffix(stdoutBuf.String(), "\n")
 	conStat, err := getContainerStatus(containerName)
 	if err != nil || conStat != "running" {
-		logger.Error("Error starting container", zap.String("containerName", containerName), zap.Error(err))
-		removeContainer(containerName)
+		logger.Error("Error getting container status after docker run", zap.String("containerName", containerName), zap.Error(err))
 		return err
+	}
+	if conStat != "running" {
+		logger.Error("Container status is not running", zap.String("containerName", containerName), zap.String("status", conStat))
+		return errors.New("Container status is not running(Maybe No FF inside)")
 	}
 	logger.Info("Container started", zap.String("containerName", containerName), zap.String("containerId", containerId))
 	service, err := serviceSubscribe(containerName, containerId, imageName, strconv.Itoa(hostDaemonPort))
@@ -129,6 +132,7 @@ func runContainer(containerName string, imageName string, portMapping string, in
 		logger.Error("Error subscribing service after service run", zap.String("containerName", containerName), zap.Error(err))
 	}
 	service.getUpdateServiceStatus()
+
 	return nil
 }
 
@@ -250,6 +254,10 @@ func removeContainer(containerName string) error {
 	if err := cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{}); err != nil {
 		logger.Error("Error removing container", zap.String("containerName", containerName), zap.Error(err))
 		return err
+	}
+	if !isSubscribed(containerName) {
+		logger.Info("Container removed", zap.String("containerName", containerName))
+		return nil
 	}
 	err = serviceUnsubscribe(containerName)
 	if err != nil {
