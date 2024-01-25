@@ -148,7 +148,10 @@ func getAllServicesInfoHandler(c *gin.Context) {
 	allServices := make([]Service, len(services))
 	i := 0
 	for _, service := range services {
-		service.getUpdateServiceStatus()
+		stat := service.getUpdateServiceStatus()
+		if stat == "" {
+			continue
+		}
 		allServices[i] = service
 		i++
 	}

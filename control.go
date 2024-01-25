@@ -91,6 +91,11 @@ func (s Service) getUpdateServiceStatus() string {
 			//fmt.Println("case 3")
 			updateServiceStatus(s.ContainerName, contStat)
 		}
+	} else {
+		logger.Error("Error getting container status", zap.String("containerName", s.ContainerName), zap.Error(err))
+		serviceUnsubscribe(s.ContainerName)
+		return ""
+
 	}
 	return s.Status
 }
