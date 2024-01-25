@@ -78,7 +78,9 @@ func (s Service) getUpdateServiceStatus() string {
 			}
 			if stat == '0' {
 				//fmt.Println("case 0")
-				updateServiceStatus(s.ContainerName, "standby")
+				if s.Status != "checkpointed" {
+					updateServiceStatus(s.ContainerName, "standby")
+				}
 			} else if stat == '1' {
 				//fmt.Println("case 1")
 				updateServiceStatus(s.ContainerName, "running")
