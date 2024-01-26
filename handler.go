@@ -14,7 +14,7 @@ import (
 type StartBody struct {
 	ContainerName string        `json:"container_name"`
 	Image         string        `json:"image"`
-	AppPort       string        `json:"app_port"`
+	AppPorts      []string      `json:"app_ports"`
 	Envs          []string      `json:"envs"`
 	Mounts        []mount.Mount `json:"mounts"`
 	Caps          []string      `json:"caps"`
@@ -90,7 +90,7 @@ func startHandler(c *gin.Context) {
 		return
 	}
 	createServiceDir(newStart.ContainerName)
-	if err := startService(newStart.ContainerName, newStart.Image, newStart.AppPort, newStart.Envs, newStart.Mounts, newStart.Caps); err != nil {
+	if err := startService(newStart.ContainerName, newStart.Image, newStart.AppPorts, newStart.Envs, newStart.Mounts, newStart.Caps); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "Failed to start the container:" + err.Error()})
 		return
 	}

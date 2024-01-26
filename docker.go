@@ -21,10 +21,10 @@ import (
 
 var lastDaemonPort int = 7877
 
-func startService(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
+func startService(containerName string, imageName string, portMappings []string, inputEnv []string, mounts []mount.Mount, caps []string) error {
 	logger.Debug("Starting service", zap.String("containerName", containerName))
 	if !isSubscribed(containerName) {
-		err := runContainer(containerName, imageName, portMapping, inputEnv, mounts, caps)
+		err := runContainer(containerName, imageName, portMappings, inputEnv, mounts, caps)
 		if err != nil {
 			logger.Error("Error running container", zap.String("containerName", containerName), zap.Error(err))
 			return err
@@ -50,7 +50,7 @@ func startService(containerName string, imageName string, portMapping string, in
 	return nil
 }
 
-func runContainer(containerName string, imageName string, portMapping string, inputEnv []string, mounts []mount.Mount, caps []string) error {
+func runContainer(containerName string, imageName string, portMappings []string, inputEnv []string, mounts []mount.Mount, caps []string) error {
 	logger.Debug("Running container", zap.String("containerName", containerName))
 	hostDaemonPort := lastDaemonPort + 1
 	for isPortInUse(strconv.Itoa(hostDaemonPort)) {
@@ -63,9 +63,11 @@ func runContainer(containerName string, imageName string, portMapping string, in
 		"docker", "run",
 		"--name", containerName,
 	}
-	if portMapping != "" {
-		cmdArgs = append(cmdArgs, "-p", portMapping)
+
+	for _, port := range portMappings {
+		cmdArgs = append(cmdArgs, "-p", port)
 	}
+
 	daemonPortMapping := strconv.Itoa(hostDaemonPort) + ":7878"
 	cmdArgs = append(cmdArgs, "-p", daemonPortMapping)
 	// Add capabilities to the command arguments
