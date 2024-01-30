@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
+type CheckpointBody struct {
+	LeaveRun      bool     `json:"leave_running"`
+	ImgUrl        string   `json:"image_url"`
+	Passphrase    string   `json:"passphrase_file"`
+	Preserve_path string   `json:"preserved_paths"`
+	Num_shards    int      `json:"num_shards"`
+	Cpu_budget    string   `json:"cpu_budget"`
+	Verbose       int      `json:"verbose"`
+	Envs          []string `json:"envs"`
+}
 
 type StartBody struct {
 	ContainerName string        `json:"container_name"`
@@ -48,10 +60,17 @@ func checkpointHandler(c *gin.Context) {
 	}
 	containerName := c.Param("name")
 	ffRet, ffMsg := callFastFreeze(1, requestBody, containerName)
+
 	if ffRet == 1 {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": ffMsg})
 	} else {
-		updateServiceStatus(containerName, "checkpointed")
+		var checkpointBody CheckpointBody
+		_ = json.Unmarshal(requestBody, &checkpointBody)
+		if checkpointBody.LeaveRun {
+			updateServiceStatus(containerName, "running")
+		} else {
+			updateServiceStatus(containerName, "checkpointed")
+		}
 		c.IndentedJSON(http.StatusOK, gin.H{"message": ffMsg})
 	}
 }
